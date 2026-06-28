@@ -1,4 +1,32 @@
-.venv/
+# Python
 __pycache__/
 *.pyc
-.env
+.venv/
+venv/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# External repos / dependencies
+lerobot/
+
+# Local trash / backups
+Trash/
+*_old.*
+*_old1.*
+*_patched.*
+*_new.*
+*_1.*
+*_2.*
+
+# Model weights / local YOLO outputs
+models/
+*.pt
+*.onnx
+*.engine
+runs/
+yolo_test.jpg
+
+# Logs / runtime
+*.log

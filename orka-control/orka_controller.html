@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORKA · Control</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap');
+
+:root {
+  --bg:      #050505;
+  --surface: #181818;
+  --surface2:#202020;
+  --border:  #3c3c3c;
+  --border2: #676767;
+  --text:    #ffffff;
+  --muted:   #c8c8c8;
+  --muted2:  #a8a8a8;
+  --good:    #7CFF9B;
+  --warn:    #FFD36A;
+  --bad:     #FF7A7A;
+  --radius:  8px;
+  --rsm:     5px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100%; height: 100%; overflow: hidden; }
+body {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Topbar */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.logo {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 6px;
+  color: var(--text);
+  margin-right: 4px;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border2);
+  border-radius: 99px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.pill strong { color: var(--text); font-weight: 400; }
+.dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border2);
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.dot.on   { background: var(--good); box-shadow: 0 0 7px rgba(124,255,155,.65); }
+.dot.err  { background: var(--bad); box-shadow: 0 0 7px rgba(255,122,122,.55); }
+.dot.warn { background: var(--warn); box-shadow: 0 0 7px rgba(255,211,106,.55); }
+
+#active-key-display {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+#active-key-display span { color: var(--text); }
+
+#help-btn {
+  width: 26px; height: 26px;
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  flex-shrink: 0;
+}
+#help-btn:hover { border-color: var(--text); color: var(--text); }
+
+/* Main */
+#main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 296px;
+  gap: 10px;
+  padding: 10px;
+  min-height: 0;
+}
+
+/* Cameras */
+#cams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  min-height: 0;
+}
+.cam-wrap {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.cam-head {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.cam-head .badge { display: flex; gap: 10px; }
+.cam-head .badge span { color: var(--text); }
+.cam-wrap img {
+  flex: 1; width: 100%;
+  object-fit: contain;
+  background: #000;
+  display: block;
+  min-height: 0;
+}
+
+.cam-wrap.offline { display: none; }
+#cams.single { grid-template-columns: 1fr; }
+
+.telemetry-chart {
+  width: 100%;
+  height: 80px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--rsm);
+  margin-top: 8px;
+  display: block;
+}
+
+.arm-grid {
+  display: grid;
+  gap: 9px;
+}
+
+.arm-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+}
+
+.arm-row label {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.arm-row input[type=range] {
+  width: 100%;
+  accent-color: var(--text);
+}
+
+.arm-val {
+  font-size: 11px;
+  color: var(--text);
+  text-align: right;
+}
+
+.sys-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.sys-actions .btn-shutdown {
+  margin-top: 0;
+}
+
+/* Right column */
+#ctrl {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* Stop */
+#btn-stop {
+  width: 100%;
+  padding: 12px;
+  background: var(--text);
+  border: none;
+  border-radius: var(--radius);
+  color: var(--bg);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 5px;
+  cursor: pointer;
+  transition: opacity .1s, transform .08s;
+  flex-shrink: 0;
+}
+#btn-stop:hover  { opacity: .85; }
+#btn-stop:active { transform: scale(.97); opacity: .7; }
+
+/* D-Pad */
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 52px);
+  grid-template-rows: repeat(3, 52px);
+  gap: 5px;
+  justify-content: center;
+  margin: 4px 0;
+}
+.abtn {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--rsm);
+  color: var(--muted);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .08s;
+  user-select: none;
+}
+.abtn:hover  { border-color: var(--text); color: var(--text); background: #1a1a1a; }
+.abtn.active { background: var(--text); border-color: var(--text); color: var(--bg); transform: scale(.94); }
+.abtn.empty  { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+.abtn.mid    { font-size: 10px; letter-spacing: 1px; border-style: dashed; color: var(--muted); }
+.abtn.mid:hover  { border-style: solid; color: var(--text); }
+.abtn.mid.active { background: var(--text); color: var(--bg); border-style: solid; }
+
+/* Rotation row */
+.rot-row { display: flex; gap: 5px; justify-content: center; margin-top: 5px; }
+.rbtn {
+  flex: 1;
+  max-width: 80px;
+  height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--rsm);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all .08s;
+  user-select: none;
+}
+.rbtn span { font-size: 9px; letter-spacing: 1px; }
+.rbtn:hover  { border-color: var(--text); color: var(--text); background: #1a1a1a; }
+.rbtn.active { background: var(--text); border-color: var(--text); color: var(--bg); transform: scale(.95); }
+
+/* Sliders */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.slider-row label { font-size: 9px; color: var(--muted); letter-spacing: 2px; white-space: nowrap; }
+.slider-row input[type=range] { flex: 1; accent-color: var(--text); cursor: pointer; }
+.slider-val { font-size: 12px; color: var(--text); min-width: 28px; text-align: right; }
+
+/* Servo buttons */
+.srow { display: flex; gap: 5px; margin-top: 4px; }
+.smbtn {
+  flex: 1;
+  padding: 8px 4px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--rsm);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all .1s;
+  text-align: center;
+}
+.smbtn:hover  { border-color: var(--text); color: var(--text); background: #1a1a1a; }
+.smbtn:active { transform: scale(.95); }
+.smbtn.yolo-on { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+/* Metrics */
+.metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+.metric {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--rsm);
+  padding: 7px;
+}
+.metric-lbl { font-size: 8px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+.metric-val { font-size: 13px; color: var(--text); margin-top: 2px; }
+.metric-val.warn { color: #999; }
+
+.btn-shutdown {
+  width: 100%; margin-top: 8px;
+  padding: 9px;
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: var(--rsm);
+  color: #aaa;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all .1s;
+}
+.btn-shutdown:hover { border-color: var(--text); color: var(--text); background: #1a1a1a; }
+
+
+.arm-log {
+  margin-top: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--rsm);
+  padding: 7px;
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.5;
+  min-height: 34px;
+  max-height: 58px;
+  overflow: hidden;
+  word-break: break-word;
+}
+.arm-note {
+  margin-top: 8px;
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.arm-note code { color: var(--text); }
+
+/* Help overlay */
+#help-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.88);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+#help-overlay.open { display: flex; }
+#help-dialog {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 28px 32px;
+  width: min(500px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.help-title {
+  font-size: 10px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 22px;
+  font-weight: 400;
+}
+.help-section { margin-bottom: 18px; }
+.help-sec-title {
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.help-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+.help-keys { display: flex; gap: 4px; flex-shrink: 0; min-width: 110px; }
+.hkey {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-bottom: 3px solid var(--border2);
+  border-radius: 5px;
+  font-size: 13px;
+  color: var(--text);
+  letter-spacing: 0;
+}
+.hkey.wide { min-width: 72px; font-size: 10px; letter-spacing: 1px; }
+.help-desc { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.help-desc b { color: var(--text); font-weight: 400; }
+.help-note {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-top: 4px;
+}
+#close-help {
+  width: 100%; margin-top: 16px;
+  padding: 10px;
+  background: var(--text);
+  border: none;
+  border-radius: var(--rsm);
+  color: var(--bg);
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  transition: opacity .1s;
+}
+#close-help:hover { opacity: .8; }
+
+
+
+/* High contrast readability pass */
+.pill {
+  background: #111;
+  color: var(--muted);
+  border-color: var(--border2);
+}
+.pill strong,
+#active-key-display span,
+.metric-val,
+.arm-val,
+.slider-val {
+  color: var(--text);
+  font-weight: 500;
+}
+.panel-title,
+.metric-lbl,
+.slider-row label,
+.arm-row label,
+.cam-head,
+.help-sec-title,
+.help-title {
+  color: var(--muted);
+  font-weight: 500;
+}
+.panel {
+  background: var(--surface);
+  border-color: var(--border2);
+}
+.metric,
+.telemetry-chart,
+.arm-log {
+  background: #0b0b0b;
+  border-color: var(--border2);
+}
+.abtn,
+.rbtn,
+.smbtn,
+.btn-shutdown,
+#help-btn {
+  background: var(--surface2);
+  border-color: var(--border2);
+  color: var(--text);
+}
+.abtn.mid {
+  color: var(--text);
+}
+.abtn:hover,
+.rbtn:hover,
+.smbtn:hover,
+.btn-shutdown:hover,
+#help-btn:hover {
+  background: #2a2a2a;
+  border-color: #ffffff;
+  color: #ffffff;
+}
+.smbtn.danger,
+.btn-shutdown.danger {
+  border-color: var(--bad);
+  color: #ffd6d6;
+}
+.smbtn.warn,
+.btn-shutdown.warn {
+  border-color: var(--warn);
+  color: #ffe8ad;
+}
+.metric-val.warn { color: var(--warn); }
+.metric-val.bad { color: var(--bad); }
+.metric-val.good { color: var(--good); }
+.arm-note {
+  color: var(--muted);
+  border-color: var(--border2);
+}
+
+/* Responsive */
+@media (max-width: 950px) {
+  html, body { overflow: auto; height: auto; }
+  #main { grid-template-columns: 1fr; }
+  #cams { grid-template-columns: 1fr; }
+  .cam-wrap img { aspect-ratio: 16/9; height: auto; }
+  #ctrl { overflow-y: visible; }
+}
+@media (max-width: 600px) {
+  .pill { display: none; }
+  #active-key-display { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">ORKA</div>
+  <div class="pill"><div class="dot" id="dot-conn"></div><span id="pill-conn">Getrennt</span></div>
+  <div class="pill">CMD <strong id="pill-cmd">—</strong></div>
+  <div class="pill">CAM <strong id="pill-cam">—°</strong></div>
+  <div class="pill"><div class="dot" id="dot-yolo"></div>YOLO·0 <strong id="pill-yolo">AUS</strong></div>
+  <div class="pill"><div class="dot" id="dot-pwr"></div>PWR <strong id="pill-pwr">—</strong></div>
+  <div class="pill"><div class="dot" id="dot-hailo"></div>HAILO <strong id="pill-hailo">—</strong></div>
+  <div class="pill"><div class="dot" id="dot-arm"></div>ARM <strong id="pill-arm">—</strong></div>
+  <div id="active-key-display">INPUT: <span id="active-key">—</span></div>
+  <button id="help-btn" onclick="openHelp()">?</button>
+</div>
+
+<div id="main">
+
+  <div id="cams">
+    <div class="cam-wrap" id="cam-card-0">
+      <div class="cam-head">
+        <span>Kamera 0</span>
+        <div class="badge"><span><span id="fps0">0</span> fps</span><span>DET <span id="det0">0</span></span></div>
+      </div>
+      <img src="/video_feed/0" alt="Cam 0">
+    </div>
+    <div class="cam-wrap" id="cam-card-1">
+      <div class="cam-head">
+        <span>Kamera 1</span>
+        <div class="badge"><span><span id="fps1">0</span> fps</span><span>DET <span id="det1">0</span></span></div>
+      </div>
+      <img src="/video_feed/1" alt="Cam 1">
+    </div>
+  </div>
+
+  <div id="ctrl">
+
+    <button id="btn-stop" onclick="emergencyStop()">■ STOP</button>
+
+    <div class="panel">
+      <div class="panel-title">Fahren</div>
+      <div class="dpad">
+        <div class="abtn empty"></div>
+        <div class="abtn" id="abtn-f"  data-cmd="f">▲</div>
+        <div class="abtn empty"></div>
+        <div class="abtn" id="abtn-sl" data-cmd="sl">◀</div>
+        <div class="abtn mid"          id="abtn-s"  data-cmd="s">STOP</div>
+        <div class="abtn" id="abtn-sr" data-cmd="sr">▶</div>
+        <div class="abtn empty"></div>
+        <div class="abtn" id="abtn-b"  data-cmd="b">▼</div>
+        <div class="abtn empty"></div>
+      </div>
+      <div class="rot-row">
+        <div class="rbtn" id="rbtn-tr" data-cmd="tr">↺ <span>LINKS</span></div>
+        <div class="rbtn" id="rbtn-tl" data-cmd="tl">↻ <span>RECHTS</span></div>
+      </div>
+      <div class="slider-row">
+        <label>SPEED</label>
+        <input id="speed" type="range" min="0" max="255" value="150" oninput="onSpeedInput(this.value)">
+        <div class="slider-val" id="speed-val">150</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Kamera · Servo</div>
+      <div class="srow">
+        <button class="smbtn" onclick="servoStep(CAM_UP_DELTA)">▲ HOCH</button>
+        <button class="smbtn" onclick="quickServo(90)">MID</button>
+        <button class="smbtn" onclick="servoStep(-CAM_UP_DELTA)">▼ RUNTER</button>
+      </div>
+      <div class="srow" style="margin-top:5px">
+        <button class="smbtn" id="yolo-btn" onclick="toggleYOLO()">YOLO·0</button>
+        <button class="smbtn" onclick="sendCmd('testservo')">TEST</button>
+        <button class="smbtn" id="record-btn" onclick="toggleRecording()">REC START</button>
+      </div>
+      <div class="slider-row">
+        <label>WINKEL</label>
+        <input id="servo" type="range" min="10" max="170" value="90"
+               oninput="document.getElementById('servo-val').textContent=this.value"
+               onchange="commitServo()">
+        <div class="slider-val" id="servo-val">90</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Telemetrie</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-lbl">24V</div><div class="metric-val" id="v24">—</div></div>
+        <div class="metric"><div class="metric-lbl">ESP</div><div class="metric-val" id="esp-tele">—</div></div>
+        <div class="metric"><div class="metric-lbl">RAW</div><div class="metric-val" id="tele-raw">—</div></div>
+      </div>
+      <canvas id="v24-chart" class="telemetry-chart" width="280" height="80"></canvas>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Arm · SO-101 Teleop</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-lbl">PROC</div><div class="metric-val" id="arm-proc">—</div></div>
+        <div class="metric"><div class="metric-lbl">LEADER</div><div class="metric-val" id="arm-leader">—</div></div>
+        <div class="metric"><div class="metric-lbl">TELEOP</div><div class="metric-val" id="arm-teleop">—</div></div>
+        <div class="metric"><div class="metric-lbl">TORQUE</div><div class="metric-val" id="arm-torque">—</div></div>
+        <div class="metric"><div class="metric-lbl">MODE</div><div class="metric-val" id="arm-mode">—</div></div>
+        <div class="metric"><div class="metric-lbl">AGE</div><div class="metric-val" id="arm-age">—</div></div>
+      </div>
+      <div class="srow" style="margin-top:8px">
+        <button class="smbtn" onclick="startArm()">ARM START</button>
+        <button class="smbtn danger" onclick="stopArm()">ARM AUS</button>
+      </div>
+      <div class="arm-log" id="arm-log">—</div>
+      <div class="arm-note">
+        PC Leader starten mit:<br>
+        <code>python leader_client_webstatus.py --pi-ip &lt;PI-IP&gt; --port COM3</code><br>
+        ARM AUS fährt den Follower zuerst in Parkposition, deaktiviert Torque und stoppt dann den Prozess.
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">System</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-lbl">CPU</div><div class="metric-val" id="cpu">—</div></div>
+        <div class="metric"><div class="metric-lbl">RAM</div><div class="metric-val" id="ram">—</div></div>
+        <div class="metric"><div class="metric-lbl">TEMP</div><div class="metric-val" id="temp">—</div></div>
+        <div class="metric"><div class="metric-lbl">UPTIME</div><div class="metric-val" id="uptime">—</div></div>
+        <div class="metric"><div class="metric-lbl">POWER</div><div class="metric-val" id="watts">—</div></div>
+        <div class="metric"><div class="metric-lbl">THROTTLE</div><div class="metric-val" id="throttle">—</div></div>
+      </div>
+      <div class="sys-actions">
+        <button class="btn-shutdown warn" onclick="stopServer()">Server stoppen</button>
+        <button class="btn-shutdown danger" onclick="shutdownPi()">Raspberry Pi ausschalten</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Help Dialog -->
+<div id="help-overlay" onclick="overlayClick(event)">
+  <div id="help-dialog">
+    <div class="help-title">Tastenbelegung</div>
+
+    <div class="help-section">
+      <div class="help-sec-title">Fahren</div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">W</div></div>
+        <div class="help-desc"><b>Vorwärts</b></div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">S</div></div>
+        <div class="help-desc"><b>Rückwärts</b></div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">A</div></div>
+        <div class="help-desc"><b>Seitlich links</b> — Mecanum</div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">D</div></div>
+        <div class="help-desc"><b>Seitlich rechts</b> — Mecanum</div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">Q</div></div>
+        <div class="help-desc"><b>Drehen links</b> auf der Stelle</div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">E</div></div>
+        <div class="help-desc"><b>Drehen rechts</b> auf der Stelle</div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey wide">SPACE</div></div>
+        <div class="help-desc"><b>Sofort-Stop</b></div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-sec-title">Speed</div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">R</div></div>
+        <div class="help-desc"><b>Speed +10</b></div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">F</div></div>
+        <div class="help-desc"><b>Speed −10</b></div>
+      </div>
+    </div>
+
+    <div class="help-section">
+      <div class="help-sec-title">Kamera &amp; System</div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">↑</div></div>
+        <div class="help-desc"><b>Kamera hoch</b> (Servo)</div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">↓</div></div>
+        <div class="help-desc"><b>Kamera runter</b> (Servo)</div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">←</div></div>
+        <div class="help-desc"><b>YOLO</b> an / aus</div>
+      </div>
+      <div class="help-row">
+        <div class="help-keys"><div class="hkey">→</div></div>
+        <div class="help-desc"><b>Notfall-Stop</b></div>
+      </div>
+    </div>
+
+    <div class="help-section" style="margin-bottom:0">
+      <div class="help-sec-title">Hinweis</div>
+      <div class="help-note">
+        Taste gehalten → fährt kontinuierlich (alle 200 ms).<br>
+        Loslassen → automatischer Stop.<br>
+        Fensterwechsel (blur) → ORKA stoppt sofort.<br>
+        ESC → diesen Dialog schließen.
+      </div>
+    </div>
+
+    <button id="close-help" onclick="closeHelp()">SCHLIESSEN</button>
+  </div>
+</div>
+
+<script>
+// CAM_UP_DELTA: +10 = Winkel steigt = Kamera geht hoch. Auf -10 ändern falls umgekehrt.
+const CAM_UP_DELTA = +10;
+
+let yoloActive = false;
+let activeCmd  = null;
+let holdTimer  = null;
+const pressedKeys = new Set();
+
+const speedSlider = document.getElementById('speed');
+const speedValEl  = document.getElementById('speed-val');
+const servoSlider = document.getElementById('servo');
+const servoValEl  = document.getElementById('servo-val');
+
+function onSpeedInput(v) { speedValEl.textContent = v; }
+
+function changeSpeed(delta) {
+  let v = Math.max(0, Math.min(255, parseInt(speedSlider.value) + delta));
+  speedSlider.value = v;
+  speedValEl.textContent = v;
+}
+
+async function sendCmd(cmd) {
+  const sp = parseInt(speedSlider.value);
+  const payload = (cmd === 's' || cmd === 'stop' || cmd === 'testservo')
+    ? { cmd } : { cmd, speed: sp };
+  try {
+    const r = await fetch('/cmd', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+    const d = await r.json();
+    document.getElementById('pill-cmd').textContent = d.cmd || cmd;
+  } catch(e) {}
+}
+
+function startHold(cmd) {
+  if (cmd === 's') { stopHold(false); sendCmd('s'); return; }
+  if (activeCmd === cmd) return;
+  stopHold(false);
+  activeCmd = cmd;
+  sendCmd(cmd);
+  holdTimer = setInterval(() => { if (activeCmd) sendCmd(activeCmd); }, 200);
+}
+
+function stopHold(doStop = true) {
+  if (holdTimer) { clearInterval(holdTimer); holdTimer = null; }
+  activeCmd = null;
+  if (doStop) sendCmd('s');
+}
+
+function emergencyStop() { stopHold(false); sendCmd('s'); }
+
+// D-Pad + rot buttons
+document.querySelectorAll('.abtn[data-cmd], .rbtn[data-cmd]').forEach(btn => {
+  const cmd = btn.dataset.cmd;
+  const press = e => { e.preventDefault(); btn.classList.add('active'); startHold(cmd); };
+  const release = () => { btn.classList.remove('active'); stopHold(); };
+  btn.addEventListener('mousedown', press);
+  btn.addEventListener('touchstart', press, { passive:false });
+  btn.addEventListener('mouseup', release);
+  btn.addEventListener('mouseleave', release);
+  btn.addEventListener('touchend', release);
+  btn.addEventListener('touchcancel', release);
+});
+
+async function setServo(angle) {
+  angle = Math.max(10, Math.min(170, angle));
+  servoSlider.value = angle;
+  servoValEl.textContent = angle;
+  try {
+    const r = await fetch('/servo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({angle}) });
+    const d = await r.json();
+    document.getElementById('pill-cam').textContent = d.angle + '°';
+  } catch(e) {}
+}
+function commitServo() { setServo(parseInt(servoSlider.value)); }
+function quickServo(a) { setServo(a); }
+function servoStep(delta) { setServo(parseInt(servoSlider.value) + delta); }
+
+async function toggleYOLO() {
+  yoloActive = !yoloActive;
+  try {
+    const r = await fetch('/yolo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({active:yoloActive}) });
+    const d = await r.json();
+    yoloActive = d.yolo_active;
+  } catch(e) { yoloActive = !yoloActive; }
+  updateYoloUI();
+}
+function updateYoloUI() {
+  document.getElementById('yolo-btn').classList.toggle('yolo-on', yoloActive);
+  document.getElementById('pill-yolo').textContent = yoloActive ? 'AN' : 'AUS';
+  document.getElementById('dot-yolo').className = 'dot' + (yoloActive ? ' on' : '');
+}
+
+async function shutdownPi() {
+  if (!confirm('Raspberry Pi wirklich ausschalten?')) return;
+  await sendCmd('s');
+  try { await fetch('/shutdown', { method:'POST' }); } catch(e) {}
+  alert('Shutdown-Befehl gesendet.');
+}
+
+function updateCameraVisibility(camAvailable) {
+  const c0 = document.getElementById('cam-card-0');
+  const c1 = document.getElementById('cam-card-1');
+  const camsEl = document.getElementById('cams');
+
+  const a0 = !!camAvailable[0];
+  const a1 = !!camAvailable[1];
+
+  if (c0) c0.classList.toggle('offline', !a0);
+  if (c1) c1.classList.toggle('offline', !a1);
+
+  const visibleCount = (a0 ? 1 : 0) + (a1 ? 1 : 0);
+  if (camsEl) camsEl.classList.toggle('single', visibleCount === 1);
+}
+
+function drawV24Chart(history) {
+  const canvas = document.getElementById('v24-chart');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h - 18);
+  ctx.lineTo(w, h - 18);
+  ctx.stroke();
+
+  if (!history || history.length < 2) return;
+
+  const vals = history.map(p => Number(p.v)).filter(v => Number.isFinite(v));
+  if (vals.length < 2) return;
+
+  let minV = Math.min(...vals);
+  let maxV = Math.max(...vals);
+
+  // Kleines Fenster erzwingen, damit auch kleine Schwankungen sichtbar sind.
+  if (maxV - minV < 0.5) {
+    const mid = (maxV + minV) / 2;
+    minV = mid - 0.25;
+    maxV = mid + 0.25;
+  }
+
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+
+  vals.forEach((v, i) => {
+    const x = (i / (vals.length - 1)) * (w - 8) + 4;
+    const y = h - 6 - ((v - minV) / (maxV - minV)) * (h - 14);
+
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+
+  ctx.stroke();
+
+  ctx.fillStyle = '#d0d0d0';
+  ctx.font = '9px DM Mono, monospace';
+  ctx.fillText(maxV.toFixed(1) + 'V', 5, 10);
+  ctx.fillText(minV.toFixed(1) + 'V', 5, h - 6);
+}
+
+async function updateTelemetry() {
+  try {
+    const d = await (await fetch('/telemetry')).json();
+
+    document.getElementById('v24').textContent =
+      d.v24 == null ? '—' : Number(d.v24).toFixed(2) + 'V';
+
+    document.getElementById('esp-tele').textContent = d.ok ? 'OK' : 'ERR';
+
+    const raw = d.raw || d.error || '—';
+    document.getElementById('tele-raw').textContent =
+      raw.length > 10 ? raw.slice(0, 10) + '…' : raw;
+
+    drawV24Chart(d.history || []);
+  } catch(e) {
+    document.getElementById('esp-tele').textContent = 'ERR';
+  }
+}
+
+function fmtArmAge(ms) {
+  if (ms == null || isNaN(ms)) return '—';
+  if (ms < 1000) return ms + 'ms';
+  return (ms / 1000).toFixed(1) + 's';
+}
+
+function setArmMetric(id, text, warn=false) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'metric-val' + (warn ? ' warn' : '');
+}
+
+async function updateArmStatus() {
+  try {
+    const d = await (await fetch('/arm/status')).json();
+    const s = d.status || {};
+
+    const running = !!d.process_running;
+    const leader = !!s.leader_connected;
+    const teleop = !!s.teleop_active;
+    const torque = !!s.torque_active;
+    const mode = s.mode || (running ? 'starting' : 'off');
+
+    setArmMetric('arm-proc', running ? 'AN' : 'AUS', !running);
+    setArmMetric('arm-leader', leader ? 'OK' : '—', running && !leader);
+    setArmMetric('arm-teleop', teleop ? 'AN' : 'AUS', false);
+    setArmMetric('arm-torque', torque ? 'AN' : 'AUS', false);
+    setArmMetric('arm-mode', String(mode).slice(0, 8).toUpperCase(), false);
+    setArmMetric('arm-age', fmtArmAge(s.last_packet_age_ms), running && leader && s.last_packet_age_ms > 800);
+
+    const dot = document.getElementById('dot-arm');
+    const pill = document.getElementById('pill-arm');
+    if (dot && pill) {
+      if (teleop) { dot.className = 'dot on'; pill.textContent = 'TELEOP'; }
+      else if (running && leader) { dot.className = 'dot warn'; pill.textContent = 'WAIT'; }
+      else if (running) { dot.className = 'dot warn'; pill.textContent = 'RUN'; }
+      else { dot.className = 'dot err'; pill.textContent = 'AUS'; }
+    }
+
+    const logEl = document.getElementById('arm-log');
+    if (logEl) {
+      const latest = (d.log || []).slice(-2).map(x => x.line).join('<br>');
+      logEl.innerHTML = latest || (s.message || '—');
+    }
+  } catch(e) {
+    setArmMetric('arm-proc', 'ERR', true);
+    const dot = document.getElementById('dot-arm');
+    const pill = document.getElementById('pill-arm');
+    if (dot) dot.className = 'dot err';
+    if (pill) pill.textContent = 'ERR';
+  }
+}
+
+async function startArm() {
+  try {
+    await fetch('/arm/start', { method:'POST' });
+    updateArmStatus();
+  } catch(e) {}
+}
+
+async function stopArm() {
+  if (!confirm('ARM AUS? Der SO-101 Follower fährt zuerst in Parkposition, deaktiviert Torque und stoppt dann den Arm-Prozess.')) return;
+  try {
+    await fetch('/arm/off', { method:'POST' });
+    updateArmStatus();
+  } catch(e) {}
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// Browser Recording
+// ─────────────────────────────────────────────────────────────
+
+let recorder = null;
+let recordedChunks = [];
+let recordingStream = null;
+let isRecording = false;
+
+async function toggleRecording() {
+  if (isRecording) {
+    stopRecording();
+  } else {
+    await startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    recordedChunks = [];
+
+    recordingStream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: 30 },
+      audio: false
+    });
+
+    let options = {};
+    if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9')) {
+      options = { mimeType: 'video/webm; codecs=vp9' };
+    } else if (MediaRecorder.isTypeSupported('video/webm')) {
+      options = { mimeType: 'video/webm' };
+    }
+
+    recorder = new MediaRecorder(recordingStream, options);
+
+    recorder.ondataavailable = event => {
+      if (event.data && event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
+
+    recorder.onstop = saveRecording;
+
+    recordingStream.getVideoTracks()[0].onended = () => {
+      if (isRecording) stopRecording();
+    };
+
+    recorder.start();
+    isRecording = true;
+
+    const btn = document.getElementById('record-btn');
+    if (btn) {
+      btn.textContent = 'REC STOP';
+      btn.classList.add('yolo-on');
+    }
+  } catch(e) {
+    console.error('Recording Fehler:', e);
+    alert('Aufnahme konnte nicht gestartet werden. Im Browser den ORKA-Tab oder das Fenster auswählen.');
+  }
+}
+
+function stopRecording() {
+  if (recorder && recorder.state !== 'inactive') {
+    recorder.stop();
+  }
+
+  if (recordingStream) {
+    recordingStream.getTracks().forEach(track => track.stop());
+  }
+
+  recordingStream = null;
+  isRecording = false;
+
+  const btn = document.getElementById('record-btn');
+  if (btn) {
+    btn.textContent = 'REC START';
+    btn.classList.remove('yolo-on');
+  }
+}
+
+function saveRecording() {
+  if (!recordedChunks.length) return;
+
+  const blob = new Blob(recordedChunks, { type: 'video/webm' });
+  const url = URL.createObjectURL(blob);
+
+  const now = new Date();
+  const ts = now.toISOString().replaceAll(':', '-').replaceAll('.', '-');
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `orka-recording-${ts}.webm`;
+  document.body.appendChild(a);
+  a.click();
+
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 500);
+}
+
+async function stopServer() {
+  if (!confirm('ORKA-Server stoppen? Raspberry Pi bleibt an. Der Arm fährt vorher in Parkposition und wird ausgeschaltet.')) return;
+
+  await sendCmd('s');
+
+  try {
+    await fetch('/server_stop', { method:'POST' });
+    alert('Server wird gestoppt. Arm wurde vorher in Parkposition gefahren und ausgeschaltet. Raspberry Pi bleibt an.');
+  } catch(e) {}
+}
+
+async function updateStatus() {
+  try {
+    const d = await (await fetch('/status')).json();
+    updateCameraVisibility(d.cam_available || [true, true]);
+    const ok = d.connected;
+    document.getElementById('dot-conn').className = 'dot ' + (ok ? 'on' : 'err');
+    document.getElementById('pill-conn').textContent = ok ? 'Verbunden' : 'Getrennt';
+    document.getElementById('fps0').textContent = d.fps0;
+    document.getElementById('fps1').textContent = d.fps1;
+    document.getElementById('det0').textContent = d.detections0;
+    document.getElementById('det1').textContent = d.detections1;
+    document.getElementById('pill-cmd').textContent = d.cmd;
+    document.getElementById('pill-cam').textContent = d.cam + '\u00b0';
+    yoloActive = d.yolo_active;
+    updateYoloUI();
+    // Hailo
+    const hDot = document.getElementById('dot-hailo');
+    const hLbl = document.getElementById('pill-hailo');
+    if (d.hailo) { hDot.className = 'dot on'; hLbl.textContent = 'AN'; }
+    else          { hDot.className = 'dot err'; hLbl.textContent = 'CPU'; }
+  } catch(e) {}
+}
+
+async function updateSystem() {
+  try {
+    const d = await (await fetch('/system')).json();
+    document.getElementById('cpu').textContent    = d.cpu_percent + '%';
+    document.getElementById('ram').textContent    = d.ram_percent + '%';
+    document.getElementById('temp').textContent   = (d.temp_c ?? '\u2014') + '\u00b0C';
+    document.getElementById('uptime').textContent = d.uptime;
+    document.getElementById('watts').textContent  = '~' + d.power_est_w + 'W';
+    const t = document.getElementById('throttle');
+    const p = document.getElementById('pill-pwr');
+    const pd = document.getElementById('dot-pwr');
+    if (d.power_ok) {
+      t.textContent = 'OK'; t.className = 'metric-val';
+      p.textContent = 'OK'; pd.className = 'dot on';
+    } else {
+      t.textContent = 'WARN'; t.className = 'metric-val warn';
+      p.textContent = 'WARN'; pd.className = 'dot warn';
+    }
+  } catch(e) {}
+}
+
+function setActiveKey() {
+  document.getElementById('active-key').textContent =
+    [...pressedKeys].length ? [...pressedKeys].join(' + ').toUpperCase() : '\u2014';
+}
+
+const driveMap = { w:'f', s:'b', a:'sr', d:'sl', q:'tr', e:'tl' };
+
+document.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if ([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+
+  if (k === 'r') {
+    if (pressedKeys.has('r')) return;
+    pressedKeys.add('r'); setActiveKey(); changeSpeed(+10); return;
+  }
+  if (k === 'f' && !driveMap[k]) {
+    if (pressedKeys.has('f')) return;
+    pressedKeys.add('f'); setActiveKey(); changeSpeed(-10); return;
+  }
+  // Note: 'f' is not in driveMap, so the above covers it.
+  // Extra safety guard just in case:
+  if (k === 'f') {
+    if (pressedKeys.has('f')) return;
+    pressedKeys.add('f'); setActiveKey(); changeSpeed(-10); return;
+  }
+  if (driveMap[k]) {
+    e.preventDefault();
+    if (pressedKeys.has(k)) return;
+    pressedKeys.add(k); setActiveKey();
+    const bId = driveMap[k];
+    const btn = document.getElementById('abtn-' + bId) || document.getElementById('rbtn-' + bId);
+    if (btn) btn.classList.add('active');
+    startHold(driveMap[k]); return;
+  }
+  if (e.key === ' ') {
+    if (pressedKeys.has('space')) return;
+    pressedKeys.add('space'); setActiveKey(); emergencyStop(); return;
+  }
+  if (e.key === 'ArrowUp')    { pressedKeys.add('ArrowUp');    setActiveKey(); servoStep(CAM_UP_DELTA); return; }
+  if (e.key === 'ArrowDown')  { pressedKeys.add('ArrowDown');  setActiveKey(); servoStep(-CAM_UP_DELTA); return; }
+  if (e.key === 'ArrowLeft')  { pressedKeys.add('ArrowLeft');  setActiveKey(); toggleYOLO(); return; }
+  if (e.key === 'ArrowRight') { pressedKeys.add('ArrowRight'); setActiveKey(); emergencyStop(); return; }
+});
+
+document.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'r') { pressedKeys.delete('r'); setActiveKey(); return; }
+  if (k === 'f') { pressedKeys.delete('f'); setActiveKey(); return; }
+  if (e.key === ' ')          { pressedKeys.delete('space');      setActiveKey(); return; }
+  if (e.key === 'ArrowUp')    { pressedKeys.delete('ArrowUp');    setActiveKey(); return; }
+  if (e.key === 'ArrowDown')  { pressedKeys.delete('ArrowDown');  setActiveKey(); return; }
+  if (e.key === 'ArrowLeft')  { pressedKeys.delete('ArrowLeft');  setActiveKey(); return; }
+  if (e.key === 'ArrowRight') { pressedKeys.delete('ArrowRight'); setActiveKey(); return; }
+  if (driveMap[k]) {
+    pressedKeys.delete(k); setActiveKey();
+    const bId = driveMap[k];
+    const btn = document.getElementById('abtn-' + bId) || document.getElementById('rbtn-' + bId);
+    if (btn) btn.classList.remove('active');
+    stopHold();
+  }
+});
+
+window.addEventListener('blur', () => {
+  pressedKeys.clear(); setActiveKey();
+  document.querySelectorAll('.abtn.active, .rbtn.active').forEach(b => b.classList.remove('active'));
+  stopHold();
+});
+
+function openHelp()  { document.getElementById('help-overlay').classList.add('open'); }
+function closeHelp() { document.getElementById('help-overlay').classList.remove('open'); }
+function overlayClick(e) { if (e.target === document.getElementById('help-overlay')) closeHelp(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHelp(); });
+
+setInterval(updateStatus, 500);
+setInterval(updateSystem, 1000);
+setInterval(updateTelemetry, 1000);
+setInterval(updateArmStatus, 1000);
+updateStatus();
+updateSystem();
+updateTelemetry();
+updateArmStatus();
+</script>
+</body>
+</html>
